@@ -6,43 +6,41 @@ const {
   deleteInvalidPropertyInObject,
 } = require("../../../../../utils/functions");
 const createHttpError = require("http-errors");
-const { CategoryModel } = require("../../../../models/category");
 const { FlightTypeSchemaModel } = require("../../../../models/flightType");
-const { UserModel } = require("../../../../models/user");
 const { ProductModel } = require("../../../../models/product");
 const {
   addProductSchema,
-  changeCourseDiscountSchema,
+  updateProductSchema,
 } = require("../../../validators/admin/product.schema");
 
 class ProductController extends Controller {
-  async addNewProduct(req, res) {
+  async addNewFlight(req, res) {
     await addProductSchema.validateAsync(req.body);
     const {
-      title,
-      description,
-      slug,
-      imageLink,
-      flightType,
-      category,
+      flightNumber,
+      airline,
+      departure,
+      arrival,
+      duration,
       price,
-      discount = 0,
-      offPrice,
+      availableSeats,
+      status,
+      flightType,
     } = req.body;
 
     const product = await ProductModel.create({
-      title,
-      description,
-      slug,
-      imageLink,
-      category,
-      flightType,
+      flightNumber,
+      airline,
+      departure,
+      arrival,
+      duration,
       price,
-      discount,
-      offPrice,
+      availableSeats,
+      status,
+      flightType,
     });
     if (!product?._id)
-      throw createHttpError.InternalServerError("Product was not registered");
+      throw createHttpError.InternalServerError("Flight  was not registered");
     return res.status(HttpStatus.CREATED).json({
       statusCode: HttpStatus.CREATED,
       data: {
@@ -52,22 +50,30 @@ class ProductController extends Controller {
     });
   }
 
-  async getListOfProducts(req, res) {
+  async getListOfFlights(req, res) {
     let dbQuery = {};
     const user = req.user;
-    const { search, category, sort, flightType } = req.query;
-    if (search) dbQuery["$text"] = { $search: search };
-    if (category) {
-      const categories = category.split(",");
-      const categoryIds = [];
-      for (const item of categories) {
-        const { _id } = await CategoryModel.findOne({ englishTitle: item });
-        categoryIds.push(_id);
-      }
-      dbQuery["category"] = {
-        $in: categoryIds,
-      };
+    const {
+      search,
+      airline,
+      departureCity,
+      departureAirport,
+      departureDateTime,
+      arrivalCity,
+      arrivalAirport,
+      arrivalDateTime,
+      price,
+      status,
+      page = 1,
+      limit = 10,
+      sort,
+      flightType,
+    } = req.query;
+
+    if (search) {
+      dbQuery["$text"] = { $search: search };
     }
+
     if (flightType) {
       const flightTypes = flightType.split(",");
       const flightTypeIds = [];
@@ -82,6 +88,34 @@ class ProductController extends Controller {
       };
     }
 
+    if (airline) {
+      dbQuery["airline"] = airline;
+    }
+    if (departureCity) {
+      dbQuery["departure.city"] = departureCity;
+    }
+    if (departureAirport) {
+      dbQuery["departure.airport"] = departureAirport;
+    }
+    if (departureDateTime) {
+      dbQuery["departure.dateTime"] = departureDateTime;
+    }
+    if (arrivalCity) {
+      dbQuery["arrival.city"] = arrivalCity;
+    }
+    if (arrivalAirport) {
+      dbQuery["arrival.airport"] = arrivalAirport;
+    }
+    if (arrivalDateTime) {
+      dbQuery["arrival.dateTime"] = arrivalDateTime;
+    }
+    if (price) {
+      dbQuery["price.economy"] = { $lte: price };
+    }
+    if (status) {
+      dbQuery["status"] = status;
+    }
+
     const sortQuery = {};
     if (!sort) sortQuery["createdAt"] = 1;
     if (sort) {
@@ -90,12 +124,14 @@ class ProductController extends Controller {
       if (sort === "popular") sortQuery["likes"] = -1;
     }
 
-    const products = await ProductModel.find(dbQuery, {
-      reviews: 0,
-    })
-      .populate([{ path: "flightType", select: { title: 1, englishTitle: 1 } }])
-      .populate([{ path: "category", select: { title: 1, englishTitle: 1 } }])
-      .sort(sortQuery);
+    // Calculate skip and limit
+    const skip = (page - 1) * limit;
+
+    // Fetch products with pagination
+    const products = await ProductModel.find(dbQuery, { reviews: 0 })
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(parseInt(limit));
 
     const transformedProducts = copyObject(products);
 
@@ -121,77 +157,48 @@ class ProductController extends Controller {
     });
   }
 
-  async getProductById(req, res) {
+  async getFlightById(req, res) {
     const { id: productId } = req.params;
-    await this.findProductById(productId);
-    const product = await ProductModel.findById(productId).populate([
-      {
-        path: "category",
-        model: "Category",
-        select: {
-          title: 1,
-          icon: 1,
-          englishTitle: 1,
-        },
-      },
-    ]);
+    await this.findFlightById(productId);
 
+    const flight = await FlightModel.findById(productId);
     return res.status(HttpStatus.OK).json({
       statusCode: HttpStatus.OK,
       data: {
-        product,
+        flight,
       },
     });
   }
 
-  async getOneProductBySlug(req, res) {
-    const { slug } = req.params;
-    const product = await ProductModel.findOne({ slug }).populate([
-      {
-        path: "category",
-        model: "Category",
-        select: {
-          title: 1,
-          icon: 1,
-          englishTitle: 1,
-        },
-      },
-    ]);
-
-    if (!product)
-      throw createHttpError.NotFound(
-        "Product with these specifications was not found"
-      );
-
-    return res.status(HttpStatus.OK).json({
-      statusCode: HttpStatus.OK,
-      data: {
-        product,
-      },
-    });
-  }
-
-  async changeProductDiscountStatus(req, res) {
+  async updateFlight(req, res) {
     const { id } = req.params;
-    await this.findProductById(id);
-    await changeCourseDiscountSchema.validateAsync(req.body);
-    const { discount, offPrice } = req.body;
-    const result = await ProductModel.updateOne(
+    await this.findFlightById(id);
+    await updateProductSchema.validateAsync(req.body);
+    const data = copyObject(req.body);
+    deleteInvalidPropertyInObject(data, ["createdAt", "updatedAt"]);
+
+    const updateFlightResult = await ProductModel.updateOne(
       { _id: id },
-      { $set: { discount, offPrice } }
+      {
+        $set: data,
+      }
     );
-    if (result.modifiedCount > 0) {
-      return res.status(HttpStatus.OK).json({
-        statusCode: HttpStatus.OK,
-        data: {
-          message: "Product discount status activated",
-        },
-      });
+
+    if (!updateFlightResult.modifiedCount) {
+      throw new createHttpError.InternalServerError(
+        "Updating the flight was not successful"
+      );
     }
-    throw createHttpError.BadRequest("Change was not made, please try again");
+
+    return res.status(HttpStatus.OK).json({
+      statusCode: HttpStatus.OK,
+      data: {
+        message: "Flight successfully updated",
+      },
+    });
   }
 
-  async removeProduct(req, res) {
+  async removeFlight(req, res) {
     const { id } = req.params;
     await this.findProductById(id);
     const deleteResult = await ProductModel.deleteOne({ _id: id });
@@ -207,73 +214,7 @@ class ProductController extends Controller {
     });
   }
 
-  async updateProduct(req, res) {
-    const { id } = req.params;
-    await this.findProductById(id);
-    const data = copyObject(req.body);
-    let blackListFields = ["bookmarks", "likes", "reviews"];
-    deleteInvalidPropertyInObject(data, blackListFields);
-    const updateProductResult = await ProductModel.updateOne(
-      { _id: id },
-      {
-        $set: data,
-      }
-    );
-    if (!updateProductResult.modifiedCount)
-      throw new createHttpError.InternalServerError(
-        "Product update was not performed"
-      );
-
-    return res.status(HttpStatus.OK).json({
-      statusCode: HttpStatus.OK,
-      data: {
-        message: "Product successfully updated",
-      },
-    });
-  }
-
-  async likeProduct(req, res) {
-    const { id: productId } = req.params;
-    const user = req.user;
-    const product = await this.findProductById(productId);
-    const likedProduct = await ProductModel.findOne({
-      _id: productId,
-      likes: user._id,
-    });
-    const updateProductQuery = likedProduct
-      ? { $pull: { likes: user._id } }
-      : { $push: { likes: user._id } };
-
-    const updateUserQuery = likedProduct
-      ? { $pull: { likedProducts: product._id } }
-      : { $push: { likedProducts: product._id } };
-
-    const productUpdate = await ProductModel.updateOne(
-      { _id: productId },
-      updateProductQuery
-    );
-    const userUpdate = await UserModel.updateOne(
-      { _id: user._id },
-      updateUserQuery
-    );
-
-    if (productUpdate.modifiedCount === 0 || userUpdate.modifiedCount === 0)
-      throw createHttpError.BadRequest("Operation was unsuccessful.");
-
-    let message;
-    if (!likedProduct) {
-      message = "Thanks for your like";
-    } else message = "Your like was removed";
-
-    return res.status(HttpStatus.OK).json({
-      statusCode: HttpStatus.OK,
-      data: {
-        message,
-      },
-    });
-  }
-
-  async findProductById(id) {
+  async findFlightById(id) {
     if (!mongoose.isValidObjectId(id))
       throw createHttpError.BadRequest("The sent product ID is incorrect");
     const product = await ProductModel.findById(id);

@@ -1,52 +1,174 @@
 const createError = require("http-errors");
 const Joi = require("joi");
-const { MongoIDPattern } = require("../../../../utils/constants");
 
 const addProductSchema = Joi.object({
-  title: Joi.string()
-    .required()
-    .min(3)
-    .max(30)
-    .error(createError.BadRequest("Product title is not valid")),
-  description: Joi.string()
-    .required()
-    .error(createError.BadRequest("The provided description is not valid")),
-  slug: Joi.string()
-    .required()
-    .error(createError.BadRequest("The provided slug is not valid")),
-  imageLink: Joi.string()
-    .required()
-    .error(createError.BadRequest("The course image link is not valid")),
   flightType: Joi.string()
     .required()
-    .regex(MongoIDPattern)
-    .error(createError.BadRequest("The food group category is not valid")),
-  category: Joi.string()
+    .error(createError.BadRequest("flightType is not valid")),
+  flightNumber: Joi.string()
     .required()
-    .regex(MongoIDPattern)
-    .error(createError.BadRequest("The food group category is not valid")),
-  price: Joi.number()
+    .min(3)
+    .max(10)
+    .error(createError.BadRequest("Flight number is not valid")),
+  airline: Joi.string()
     .required()
-    .error(createError.BadRequest("The provided price is not valid")),
-  discount: Joi.number()
-    .allow(0)
-    .error(createError.BadRequest("The provided discount is not valid")),
-  offPrice: Joi.number()
-    .allow(0)
-    .error(createError.BadRequest("The discounted price is not valid")),
+    .min(2)
+    .max(50)
+    .error(createError.BadRequest("Airline name is not valid")),
+  departure: Joi.object({
+    airport: Joi.string()
+      .required()
+      .min(3)
+      .max(50)
+      .error(createError.BadRequest("Departure airport code is not valid")),
+    city: Joi.string()
+      .required()
+      .min(2)
+      .max(50)
+      .error(createError.BadRequest("Departure city is not valid")),
+    dateTime: Joi.date()
+      .iso()
+      .required()
+      .error(createError.BadRequest("Departure date and time are not valid")),
+  }).required(),
+  arrival: Joi.object({
+    airport: Joi.string()
+      .required()
+      .min(3)
+      .max(50)
+      .error(createError.BadRequest("Arrival airport code is not valid")),
+    city: Joi.string()
+      .required()
+      .min(2)
+      .max(50)
+      .error(createError.BadRequest("Arrival city is not valid")),
+    dateTime: Joi.date()
+      .iso()
+      .required()
+      .error(createError.BadRequest("Departure date and time are not valid")),
+  }).required(),
+  duration: Joi.number()
+    .required()
+    .positive()
+    .error(createError.BadRequest("Duration must be a positive number")),
+  price: Joi.object({
+    economy: Joi.number()
+      .required()
+      .positive()
+      .error(createError.BadRequest("Economy price must be a positive number")),
+    business: Joi.number()
+      .required()
+      .positive()
+      .error(
+        createError.BadRequest("Business price must be a positive number")
+      ),
+  }).required(),
+  availableSeats: Joi.object({
+    economy: Joi.number()
+      .required()
+      .integer()
+      .positive()
+      .error(
+        createError.BadRequest(
+          "Available economy seats must be a positive integer"
+        )
+      ),
+    business: Joi.number()
+      .required()
+      .integer()
+      .positive()
+      .error(
+        createError.BadRequest(
+          "Available business seats must be a positive integer"
+        )
+      ),
+  }).required(),
+  status: Joi.string()
+    .required()
+    .valid("scheduled", "canceled", "delayed")
+    .error(
+      createError.BadRequest(
+        "Status must be 'scheduled', 'canceled', or 'delayed'"
+      )
+    ),
 });
 
-const changeCourseDiscountSchema = Joi.object({
-  offPrice: Joi.number()
-    .required()
-    .error(createError.BadRequest("The provided price is not valid")),
-  discount: Joi.number()
-    .required()
-    .allow(0)
-    .error(createError.BadRequest("The provided discount is not valid")),
+const updateProductSchema = Joi.object({
+  flightNumber: Joi.string()
+    .min(3)
+    .max(10)
+    .error(createError.BadRequest("Flight number is not valid")),
+  airline: Joi.string()
+    .min(2)
+    .max(50)
+    .error(createError.BadRequest("Airline name is not valid")),
+  departure: Joi.object({
+    airport: Joi.string()
+      .min(3)
+      .max(5)
+      .error(createError.BadRequest("Departure airport code is not valid")),
+    city: Joi.string()
+      .min(2)
+      .max(50)
+      .error(createError.BadRequest("Departure city is not valid")),
+    dateTime: Joi.date().error(
+      createError.BadRequest("Departure date and time are not valid")
+    ),
+  }),
+  arrival: Joi.object({
+    airport: Joi.string()
+      .min(3)
+      .max(5)
+      .error(createError.BadRequest("Arrival airport code is not valid")),
+    city: Joi.string()
+      .min(2)
+      .max(50)
+      .error(createError.BadRequest("Arrival city is not valid")),
+    dateTime: Joi.date().error(
+      createError.BadRequest("Arrival date and time are not valid")
+    ),
+  }),
+  duration: Joi.number()
+    .positive()
+    .error(createError.BadRequest("Duration must be a positive number")),
+  price: Joi.object({
+    economy: Joi.number()
+      .positive()
+      .error(createError.BadRequest("Economy price must be a positive number")),
+    business: Joi.number()
+      .positive()
+      .error(
+        createError.BadRequest("Business price must be a positive number")
+      ),
+  }),
+  availableSeats: Joi.object({
+    economy: Joi.number()
+      .integer()
+      .positive()
+      .error(
+        createError.BadRequest(
+          "Available economy seats must be a positive integer"
+        )
+      ),
+    business: Joi.number()
+      .integer()
+      .positive()
+      .error(
+        createError.BadRequest(
+          "Available business seats must be a positive integer"
+        )
+      ),
+  }),
+  status: Joi.string()
+    .valid("scheduled", "canceled", "delayed")
+    .error(
+      createError.BadRequest(
+        "Status must be 'scheduled', 'canceled', or 'delayed'"
+      )
+    ),
 });
 
 module.exports = {
   addProductSchema,
-  changeCourseDiscountSchema,
+  updateProductSchema,
 };

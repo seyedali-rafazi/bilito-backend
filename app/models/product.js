@@ -12,11 +12,11 @@ const ProductSchema = new mongoose.Schema(
     },
     flightType: { type: ObjectId, ref: "flightType", required: true },
     arrival: {
-      airport: { type: String, required: true }, // e.g., 'LAX'
-      city: { type: String, required: true }, // e.g., 'Los Angeles'
+      airport: { type: String, required: true }, 
+      city: { type: String, required: true }, 
       dateTime: { type: Date, required: true },
     },
-    duration: { type: Number, required: true }, // in minutes
+    duration: { type: Number, required: true }, 
     price: {
       economy: { type: Number, required: true },
       business: { type: Number, required: true },
@@ -31,8 +31,6 @@ const ProductSchema = new mongoose.Schema(
       default: "scheduled",
       required: true,
     },
-
-    category: { type: ObjectId, ref: "Category", required: true },
   },
   {
     timestamps: true,

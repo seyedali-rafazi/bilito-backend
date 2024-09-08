@@ -4,18 +4,14 @@ const {
   ProductController,
 } = require("../../http/controllers/admin/product/product.controller");
 
-router.post("/add", expressAsyncHandler(ProductController.addNewProduct));
+router.post("/add", expressAsyncHandler(ProductController.addNewFlight));
 router.delete(
   "/remove/:id",
-  expressAsyncHandler(ProductController.removeProduct)
+  expressAsyncHandler(ProductController.removeFlight)
 );
 router.patch(
   "/update/:id",
-  expressAsyncHandler(ProductController.updateProduct)
-);
-router.patch(
-  "/change-discount/:id",
-  expressAsyncHandler(ProductController.changeProductDiscountStatus)
+  expressAsyncHandler(ProductController.updateFlight)
 );
 
 module.exports = {
