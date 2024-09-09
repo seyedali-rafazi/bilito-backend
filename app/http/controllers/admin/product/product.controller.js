@@ -133,26 +133,10 @@ class ProductController extends Controller {
       .skip(skip)
       .limit(parseInt(limit));
 
-    const transformedProducts = copyObject(products);
-
-    const newProducts = transformedProducts.map((product) => {
-      product.likesCount = product.likes.length;
-      product.isLiked = false;
-      if (!user) {
-        product.isLiked = false;
-        delete product.likes;
-        return product;
-      }
-      if (product.likes.includes(user._id.toString())) {
-        product.isLiked = true;
-      }
-      delete product.likes;
-      return product;
-    });
     return res.status(HttpStatus.OK).json({
       statusCode: HttpStatus.OK,
       data: {
-        products: newProducts,
+        products: products,
       },
     });
   }
