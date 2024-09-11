@@ -54,7 +54,7 @@ class FlightTypeController extends Controller {
     const flightType = await FlightTypeSchemaModel.findById(id);
     if (!flightType)
       throw createHttpError.BadRequest(
-        "A category with this title does not exist."
+        "A FlightType with this title does not exist."
       );
     return flightType;
   }
