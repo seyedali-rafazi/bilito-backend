@@ -145,7 +145,7 @@ class ProductController extends Controller {
     const { id: productId } = req.params;
     await this.findFlightById(productId);
 
-    const flight = await FlightModel.findById(productId);
+    const flight = await ProductModel.findById(productId);
     return res.status(HttpStatus.OK).json({
       statusCode: HttpStatus.OK,
       data: {

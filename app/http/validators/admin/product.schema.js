@@ -94,6 +94,9 @@ const addProductSchema = Joi.object({
 });
 
 const updateProductSchema = Joi.object({
+  flightType: Joi.string()
+    .required()
+    .error(createError.BadRequest("flightType is not valid")),
   flightNumber: Joi.string()
     .min(3)
     .max(10)
@@ -105,7 +108,7 @@ const updateProductSchema = Joi.object({
   departure: Joi.object({
     airport: Joi.string()
       .min(3)
-      .max(5)
+      .max(50)
       .error(createError.BadRequest("Departure airport code is not valid")),
     city: Joi.string()
       .min(2)
@@ -118,7 +121,7 @@ const updateProductSchema = Joi.object({
   arrival: Joi.object({
     airport: Joi.string()
       .min(3)
-      .max(5)
+      .max(50)
       .error(createError.BadRequest("Arrival airport code is not valid")),
     city: Joi.string()
       .min(2)
